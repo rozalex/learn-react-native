@@ -1,5 +1,5 @@
 import React from 'react'
-import { StyleSheet, Text, View, AsyncStorage } from 'react-native'
+import {Text, View, AsyncStorage } from 'react-native'
 import {
   Container,
   Header,
@@ -15,42 +15,7 @@ import {
   CheckBox
 } from 'native-base'
 
-const taskList = [
-  {task: "Install Node.js", Points: 1},
-  {task: "Install IDE (Sublime, Atom, etc..)", Points: 1},
-  {task: "Install Expo XDE to your computer", Points: 2},
-  {task: "Install Expo on your smartphone", Points: 1},
-  {task: "Create new react native project with Expo", Points: 3},
-  {task: "Run your project on your mobile device", Points: 1},
-  {task: "Learn react native mobile components", Points: 3},
-  {task: "Learn about styling for react native", Points: 2},
-  {task: "Learn about routing", Points: 3},
-  {task: "Learn about React lifecycle", Points: 3},
-  {task: "Learn about AsyncStorage", Points: 2},
-  {task: "Learn about Fetch", Points: 3},
-  {task: "Install Genymotion", Points: 2},
-  {task: "Run your app with Genymotion", Points: 2},
-  {task: "Create a splash screen", Points: 2},
-  {task: "Read about internalization", Points: 2},
-  {task: "Read about redux", Points: 2},
-  {task: "Add Tests to your app", Points: 4},
-];
-
-const ranks = [
-  "Newbie", 
-  "Rookie", 
-  "Beginner", 
-  "Talented", 
-  "Skilled", 
-  "Intermediate", 
-  "Skillful", 
-  "Seasoned", 
-  "Proficient", 
-  "Experienced", 
-  "Advanced", 
-  "Senior", 
-  "Expert"
-]
+import {taskList, ranks, styles, consts} from './'
 
 export default class HomeScreen extends React.Component {
   static navigationOptions = {
@@ -62,7 +27,7 @@ export default class HomeScreen extends React.Component {
 
     maxScore = this.calculateMaxScore();
     this.state = {
-      fontLoaded: false,
+      resourcesLoaded: false,
       checkedItems: [],
       score: 0,
       maxScore: maxScore
@@ -75,15 +40,13 @@ export default class HomeScreen extends React.Component {
       Roboto_medium: require('native-base/Fonts/Roboto_medium.ttf')
     })
 
-    this.setState({
-      fontLoaded: true
-    })
-
-    AsyncStorage.getItem('checkedItems').then((value) => {
-      this.setState({checkedItems: JSON.parse(value)})
-    })
-    AsyncStorage.getItem('score').then((value) => {
-      this.setState({score: value})
+    AsyncStorage.getItem(consts.storageKey).then((value) => {
+      const appData = JSON.parse(value) || {checkedItems: [], score: 0};
+      this.setState({
+        checkedItems: appData.checkedItems,
+        score: appData.score,
+        resourcesLoaded: true
+      })
     })
   }
 
@@ -104,22 +67,30 @@ export default class HomeScreen extends React.Component {
     })
     return score;
   }
+
+  prepareCheckedItems(item) {
+    return new Promise((resolve) => {
+      const newCheckedItems = [...this.state.checkedItems];
+      if (newCheckedItems.indexOf(item.task) < 0) {
+        newCheckedItems.push(item.task);
+      } else {
+        newCheckedItems.splice(newCheckedItems.indexOf(item.task), 1);
+      }
+
+      resolve(newCheckedItems);
+    });
+  }
+
   handleItemClick(item) {
-    const checkedItems = this.state.checkedItems;
+    this.prepareCheckedItems(item).then((newCheckedItems) => {
+      const score = this.calculateScore();
+      const stateItems = {
+        checkedItems: newCheckedItems,
+        score: score      
+      }
 
-    if (checkedItems.indexOf(item.task) < 0) {
-      checkedItems.push(item.task);
-    } else {
-      checkedItems.splice(checkedItems.indexOf(item.task), 1);
-    }
-
-    AsyncStorage.setItem("checkedItems",JSON.stringify(checkedItems));
-    const score = this.calculateScore();
-    AsyncStorage.setItem("score", score);
-
-    this.setState({
-      checkedItems: checkedItems,
-      score: score
+      AsyncStorage.setItem(consts.storageKey, JSON.stringify(stateItems));
+      this.setState(stateItems);      
     });
   }
 
@@ -129,13 +100,7 @@ export default class HomeScreen extends React.Component {
 
   renderHeader() {
     return (
-      <Header>
-        <Left/>
-        <Body>
-          <Title></Title>
-        </Body>
-        <Right />
-      </Header>
+      <Header></Header>
     );
   }
 
@@ -177,13 +142,9 @@ export default class HomeScreen extends React.Component {
     const title = ranks[score] ? ranks[score] : ranks[score-1];
 
     return (
-      <Footer>
-        <FooterTab>
-          <Button full>
-            <Text style={styles.footer}>Your Rank: {title}</Text>
-          </Button>
-        </FooterTab>
-      </Footer>
+      <View>
+        <Text style={styles.footer}>Your Rank: {title}</Text>
+      </View>
     );    
   }
 
@@ -201,7 +162,7 @@ export default class HomeScreen extends React.Component {
   }
 
   render() {
-    if (!this.state.fontLoaded) {
+    if (!this.state.resourcesLoaded) {
       return (
         <View style={styles.container}>
           <Text>Loading list...</Text>
@@ -220,28 +181,3 @@ export default class HomeScreen extends React.Component {
   }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headline: {
-    textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginTop: 0,
-    backgroundColor: 'skyblue',
-  },
-  subtitle: {
-    textAlign: 'center',
-    fontSize: 15,
-    backgroundColor: 'skyblue',
-  },
-  footer: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    backgroundColor: 'skyblue',
-  }
-});
