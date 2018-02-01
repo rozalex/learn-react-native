@@ -4,8 +4,8 @@ import Splash from './src/Splash'
 import HomeScreen from './src/HomeScreen'
 
 const AppNavigator = StackNavigator({
-  Home: { screen: Splash },
-  mainScreen: { screen: HomeScreen }
+  // Home: { screen: Splash },
+  Home: { screen: HomeScreen }
 })
 
 export default class App extends React.Component {
