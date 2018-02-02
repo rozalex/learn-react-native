@@ -4,18 +4,16 @@ import {
   Container,
   Header,
   Left,
-  Body,
   Right,
   Button,
   Title,
   Content,
   FooterTab,
-  Footer,
-  ListItem,
-  CheckBox
+  Footer
 } from 'native-base'
 
-import {taskList, ranks, styles, consts} from './'
+import {initTaskList, ranks, styles, consts} from './resources'
+import Item from './Item'
 
 export default class HomeScreen extends React.Component {
   static navigationOptions = {
@@ -25,10 +23,12 @@ export default class HomeScreen extends React.Component {
   constructor(props) {    
     super(props)
 
-    maxScore = this.calculateMaxScore();
+    this.handleItemClick = this.handleItemClick.bind(this);
+
+    const maxScore = this.calculateMaxScore();
     this.state = {
       resourcesLoaded: false,
-      checkedItems: [],
+      taskLIst: [],
       score: 0,
       maxScore: maxScore
     }
@@ -41,61 +41,37 @@ export default class HomeScreen extends React.Component {
     })
 
     AsyncStorage.getItem(consts.storageKey).then((value) => {
-      const appData = JSON.parse(value) || {checkedItems: [], score: 0};
+      const appData = JSON.parse(value);
       this.setState({
-        checkedItems: appData.checkedItems,
-        score: appData.score,
+        taskLIst: appData.taskLIst || initTaskList,
+        score: appData.score || 0,
         resourcesLoaded: true
       })
     })
   }
 
-  calculateScore()  {
-    let score = 0;
-    taskList.forEach(item => {
-      if (this.state.checkedItems.indexOf(item.task) >= 0) {
-        score = score + item.Points;
-      }
-    })
-    return score + "";
-  }
-
   calculateMaxScore()  {
     let score = 0;
-    taskList.forEach(item => {
+    initTaskList.forEach(item => {
         score = score + item.Points;
     })
     return score;
   }
 
-  prepareCheckedItems(item) {
-    return new Promise((resolve) => {
-      const newCheckedItems = [...this.state.checkedItems];
-      if (newCheckedItems.indexOf(item.task) < 0) {
-        newCheckedItems.push(item.task);
-      } else {
-        newCheckedItems.splice(newCheckedItems.indexOf(item.task), 1);
-      }
+  handleItemClick(item, index) {
+    const {taskLIst, score} = this.state;
+    const newTaskList = [...taskLIst];
 
-      resolve(newCheckedItems);
-    });
-  }
+    newTaskList[index].isChecked = !item.isChecked;
 
-  handleItemClick(item) {
-    this.prepareCheckedItems(item).then((newCheckedItems) => {
-      const score = this.calculateScore();
-      const stateItems = {
-        checkedItems: newCheckedItems,
-        score: score      
-      }
+    const stateItems = {
+      score: item.isChecked ? score + item.Points : score - item.Points,
+      taskLIst: newTaskList
+    }
 
-      AsyncStorage.setItem(consts.storageKey, JSON.stringify(stateItems));
-      this.setState(stateItems);      
-    });
-  }
-
-  isChecked(item) {
-    return this.state.checkedItems.indexOf(item.task) >= 0 ? true : false;
+    this.setState(stateItems); 
+    AsyncStorage.setItem(consts.storageKey, JSON.stringify(stateItems));
+     
   }
 
   renderHeader() {
@@ -105,14 +81,11 @@ export default class HomeScreen extends React.Component {
   }
 
   renderInstallationList() {
-    return taskList.map((item, index) => {
+    const {taskLIst} = this.state;
+
+    return taskLIst.map((item, index) => {
       return (
-        <ListItem key={index} onPress={() => this.handleItemClick(item)}>
-          <CheckBox onPress={() => this.handleItemClick(item)} checked={this.isChecked(item)} />
-          <Body>
-            <Text> {item.task}</Text>
-          </Body>
-        </ListItem>
+        <Item key={index} index={index} item={item} handleClick={this.handleItemClick} />
       )
     })    
   }
@@ -123,18 +96,6 @@ export default class HomeScreen extends React.Component {
         {this.renderInstallationList()}
       </Content>
     );  
-  }
-
-  printChecked() {
-    return this.state.checkedItems.map((item, index) => {
-      return (
-        <ListItem key={index}>
-          <Body>
-            <Text>{item}</Text>
-          </Body>
-        </ListItem>
-      )
-    }) 
   }
 
   renderFooter() {
